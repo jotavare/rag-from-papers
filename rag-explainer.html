@@ -1,0 +1,505 @@
+<title>Inside rag-from-papers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; a pipeline strip up top, then one section per stage,
+   each stage keyed to its own color so the same hue marks it everywhere. */
+:root {
+  --bg: #f6f8fa;
+  --surface: #ffffff;
+  --ink: #17202b;
+  --muted: #5a6776;
+  --line: #d9e0e7;
+  --index: #0f7f86;      /* stage 1: indexing */
+  --index-soft: #dff1f2;
+  --retrieve: #b26a00;   /* stage 2: retrieval */
+  --retrieve-soft: #fbedd6;
+  --generate: #6a4bc4;   /* stage 3: generation */
+  --generate-soft: #ebe5fa;
+  --code-bg: #eef2f6;
+  --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #10151c; --surface: #171e27; --ink: #e6ebf1; --muted: #98a5b4; --line: #2a3542;
+    --index: #4cc3ca; --index-soft: #12333a; --retrieve: #f0a83c; --retrieve-soft: #3a2b12;
+    --generate: #a993f0; --generate-soft: #2a2348; --code-bg: #1d2631; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #10151c; --surface: #171e27; --ink: #e6ebf1; --muted: #98a5b4; --line: #2a3542;
+  --index: #4cc3ca; --index-soft: #12333a; --retrieve: #f0a83c; --retrieve-soft: #3a2b12;
+  --generate: #a993f0; --generate-soft: #2a2348; --code-bg: #1d2631; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 16px/1.6 var(--font-body);
+}
+.wrap {
+  max-width: 920px; margin: 0 auto;
+  padding-block: 48px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 56px;
+}
+h1, h2, h3 { font-family: var(--font-display); line-height: 1.15; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; letter-spacing: -0.01em; }
+h2 { font-size: clamp(1.5rem, 3.4vw, 2rem); font-weight: 700; }
+h3 { font-size: 1.1rem; font-weight: 500; }
+p { margin: 0; max-width: 65ch; }
+code, .mono { font-family: var(--font-mono); font-size: 0.88em; }
+code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; }
+.muted { color: var(--muted); }
+.eyebrow {
+  font: 500 0.75rem/1 var(--font-mono); letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--muted);
+}
+a { color: inherit; text-underline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+
+/* Intro */
+.intro { display: grid; gap: 16px; }
+.intro p { font-size: 1.1rem; color: var(--muted); }
+
+/* Pipeline strip */
+.pipeline { display: grid; gap: 12px; }
+.phase-label { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.85rem; color: var(--muted); }
+.phase-label span { display: inline-flex; align-items: center; gap: 6px; }
+.flow {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+}
+.step {
+  border-radius: 10px; padding: 16px; display: grid; gap: 6px; align-content: start;
+  background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--c);
+}
+.step .eyebrow { color: var(--c); }
+.step p { font-size: 0.9rem; color: var(--muted); }
+.step .file { font: 500 0.85rem var(--font-mono); color: var(--ink); }
+.when { font-size: 0.8rem; font-family: var(--font-mono); color: var(--muted); }
+@media (max-width: 640px) { .flow { grid-template-columns: minmax(0, 1fr); } }
+
+/* Stage sections */
+.stage { display: grid; gap: 20px; }
+.stage-head { display: grid; gap: 8px; border-left: 4px solid var(--c); padding-left: 16px; }
+.stage-head .eyebrow { color: var(--c); }
+.c-index { --c: var(--index); --c-soft: var(--index-soft); }
+.c-retrieve { --c: var(--retrieve); --c-soft: var(--retrieve-soft); }
+.c-generate { --c: var(--generate); --c-soft: var(--generate-soft); }
+
+.substeps { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.substep { display: grid; gap: 4px; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.substep b { font-weight: 600; }
+.substep span { font-size: 0.88rem; color: var(--muted); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px; display: grid; gap: 16px; min-width: 0; }
+.panel h3 { color: var(--ink); }
+
+.params { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; font-size: 0.92rem; margin: 0; }
+.params dt { font-family: var(--font-mono); color: var(--c); }
+.params dd { margin: 0; color: var(--muted); }
+
+.gotcha { background: var(--c-soft); border-radius: 10px; padding: 16px 18px; display: grid; gap: 10px; }
+.gotcha .eyebrow { color: var(--c); }
+
+/* Chunking demo */
+.controls { display: flex; flex-wrap: wrap; gap: 16px 28px; }
+.control { display: grid; gap: 4px; font-size: 0.85rem; min-width: 200px; flex: 1; }
+.control label { display: flex; justify-content: space-between; color: var(--muted); }
+.control output { font-family: var(--font-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+input[type="range"] { width: 100%; accent-color: var(--c); }
+.chunks { display: grid; gap: 8px; }
+.chunk { font: 0.85rem/1.55 var(--font-mono); padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--bg); overflow-wrap: anywhere; }
+.chunk .id { color: var(--c); font-weight: 500; margin-right: 8px; }
+.chunk mark { background: var(--c-soft); color: inherit; border-bottom: 2px solid var(--c); }
+.legend { font-size: 0.82rem; color: var(--muted); display: flex; gap: 8px; align-items: center; }
+.legend i { width: 14px; height: 10px; background: var(--c-soft); border-bottom: 2px solid var(--c); display: inline-block; }
+
+/* Bars */
+.bars { display: grid; gap: 10px; }
+.bar-row { display: grid; grid-template-columns: 120px minmax(0, 1fr) 48px; gap: 10px; align-items: center; font-size: 0.85rem; }
+.bar-track { height: 14px; background: var(--bg); border-radius: 4px; overflow: hidden; display: flex; }
+.bar-fill { height: 100%; background: var(--c); }
+.bar-fill.ref { background: repeating-linear-gradient(45deg, var(--muted) 0 4px, transparent 4px 8px); opacity: 0.6; }
+.bar-row .num { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Embedding map */
+.q-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.q-buttons button {
+  font: 500 0.85rem var(--font-body); padding: 8px 12px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--bg); color: var(--ink);
+}
+.q-buttons button[aria-pressed="true"] { background: var(--c); border-color: var(--c); color: var(--surface); }
+.map-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 720px) { .map-grid { grid-template-columns: minmax(0, 1fr); } }
+.map svg { width: 100%; height: auto; display: block; background: var(--bg); border-radius: 8px; }
+.map .note { font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
+.results { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; counter-reset: r; }
+.results li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; font-size: 0.88rem; padding: 6px 8px; border-radius: 6px; background: var(--bg); }
+.results li::before { counter-increment: r; content: "[" counter(r) "]"; font-family: var(--font-mono); color: var(--c); }
+.results .src { display: block; font-family: var(--font-mono); font-size: 0.75rem; color: var(--muted); }
+.results .d { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Real run table */
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.88rem; min-width: 420px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+th { font-weight: 600; color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.05em; }
+td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Prompt anatomy */
+.prompt { font: 0.82rem/1.6 var(--font-mono); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+.prompt .part { padding: 12px 14px; border-left: 4px solid transparent; white-space: pre-wrap; overflow-wrap: anywhere; }
+.prompt .part + .part { border-top: 1px dashed var(--line); }
+.prompt .tag { display: block; font-family: var(--font-body); font-size: 0.72rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 4px; }
+.prompt .sys { border-left-color: var(--generate); } .prompt .sys .tag { color: var(--generate); }
+.prompt .ctx { border-left-color: var(--retrieve); } .prompt .ctx .tag { color: var(--retrieve); }
+.prompt .q { border-left-color: var(--ink); } .prompt .q .tag { color: var(--ink); }
+.answer { border-left: 4px solid var(--generate); padding: 4px 0 4px 16px; display: grid; gap: 8px; }
+.answer cite { font-style: normal; font-family: var(--font-mono); color: var(--generate); }
+
+.backends { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.backend { padding: 14px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); display: grid; gap: 4px; align-content: start; }
+.backend code { justify-self: start; }
+.backend span { font-size: 0.88rem; color: var(--muted); }
+
+footer { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 20px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .map line, .map circle { transition: all 0.35s ease; }
+}
+</style>
+
+<div class="wrap">
+
+  <header class="intro">
+    <span class="eyebrow">rag-from-papers · how it works</span>
+    <h1>Inside rag-from-papers</h1>
+    <p>A RAG app answers a question by first finding the right passages in your documents, then asking a language model to answer using only those passages. This page walks through the three stages using the real numbers from this project: 7 AI papers, 398 chunks, one question.</p>
+  </header>
+
+  <section class="pipeline" aria-label="Pipeline overview">
+    <div class="flow">
+      <div class="step c-index">
+        <span class="eyebrow">Stage 1 · Indexing</span>
+        <span class="file">indexing.py</span>
+        <p>Papers → chunks → vectors → database</p>
+        <span class="when">runs once, ahead of time</span>
+      </div>
+      <div class="step c-retrieve">
+        <span class="eyebrow">Stage 2 · Retrieval</span>
+        <span class="file">retrieval.py</span>
+        <p>Question → vector → 5 closest chunks</p>
+        <span class="when">runs on every question</span>
+      </div>
+      <div class="step c-generate">
+        <span class="eyebrow">Stage 3 · Generation</span>
+        <span class="file">generation.py</span>
+        <p>Chunks + question → LLM → cited answer</p>
+        <span class="when">runs on every question</span>
+      </div>
+    </div>
+    <p class="muted" style="font-size:0.9rem">Indexing is the library's card catalogue, built once. Retrieval and generation happen each time you run <code>python ask.py "…"</code>.</p>
+  </section>
+
+  <!-- ============ STAGE 1 ============ -->
+  <section class="stage c-index" id="indexing">
+    <div class="stage-head">
+      <span class="eyebrow">Stage 1 · RAG From Scratch, Part 2</span>
+      <h2>Indexing: turn papers into searchable vectors</h2>
+      <p class="muted">A language model can't read 7 full papers for every question, and plain keyword search misses answers phrased differently. So the papers are cut into small pieces and each piece gets a numeric "meaning fingerprint".</p>
+    </div>
+
+    <div class="substeps">
+      <div class="substep"><b>1. Load</b><span><code>pypdf</code> pulls text out of each PDF, page by page.</span></div>
+      <div class="substep"><b>2. Chunk</b><span>Each page is cut into 1,000-character windows that overlap by 200.</span></div>
+      <div class="substep"><b>3. Embed</b><span><code>all-MiniLM-L6-v2</code> turns every chunk into 384 numbers.</span></div>
+      <div class="substep"><b>4. Store</b><span>Chunks, vectors and page numbers go into a local Chroma database.</span></div>
+    </div>
+
+    <div class="panel">
+      <h3>Try chunking</h3>
+      <p class="muted" style="font-size:0.92rem">Why overlap? If a sentence is cut at a chunk boundary, the overlap makes sure it still appears whole in the next chunk. Drag the sliders; this demo uses small numbers so you can see it.</p>
+      <div class="controls">
+        <div class="control">
+          <label for="size">Chunk size <output id="sizeOut">120</output></label>
+          <input type="range" id="size" min="60" max="300" step="10" value="120">
+        </div>
+        <div class="control">
+          <label for="overlap">Overlap <output id="overlapOut">30</output></label>
+          <input type="range" id="overlap" min="0" max="100" step="5" value="30">
+        </div>
+      </div>
+      <div class="legend"><i></i> text repeated from the previous chunk</div>
+      <div class="chunks" id="chunks"></div>
+    </div>
+
+    <dl class="params panel">
+      <dt>CHUNK_SIZE</dt><dd>1000 characters, about one or two paragraphs</dd>
+      <dt>CHUNK_OVERLAP</dt><dd>200 characters shared with the next chunk</dd>
+      <dt>EMBED_MODEL</dt><dd>all-MiniLM-L6-v2: small, free, runs on a laptop CPU</dd>
+      <dt>chroma_db/</dt><dd>where the vectors live on disk (not committed to Git)</dd>
+    </dl>
+
+    <div class="gotcha">
+      <span class="eyebrow">What went wrong in this project</span>
+      <p>The first run produced 796 chunks, and half were bibliography pages. Reference lists are packed with words like "retrieval" and "generation", so they looked very similar to questions while containing no answers. Three of the top five results for the first test question were citation lists. The fix: stop reading each paper at its "References" heading.</p>
+      <div class="bars" aria-label="Chunk counts before and after the fix">
+        <div class="bar-row"><span>First run</span><div class="bar-track"><div class="bar-fill" style="width:50%"></div><div class="bar-fill ref" style="width:50%"></div></div><span class="num">796</span></div>
+        <div class="bar-row"><span>References skipped</span><div class="bar-track"><div class="bar-fill" style="width:50%"></div></div><span class="num">398</span></div>
+      </div>
+      <p class="muted" style="font-size:0.85rem">Striped part: 398 chunks of bibliography that were removed.</p>
+    </div>
+  </section>
+
+  <!-- ============ STAGE 2 ============ -->
+  <section class="stage c-retrieve" id="retrieval">
+    <div class="stage-head">
+      <span class="eyebrow">Stage 2 · RAG From Scratch, Part 3</span>
+      <h2>Retrieval: find the chunks closest in meaning</h2>
+      <p class="muted">The question is embedded with the same model, so it lands in the same space as the chunks. Chunks about similar ideas sit close together. Retrieval returns the 5 nearest ones.</p>
+    </div>
+
+    <div class="panel">
+      <h3>Pick a question</h3>
+      <div class="q-buttons" role="group" aria-label="Sample questions" id="qButtons"></div>
+      <div class="map-grid">
+        <div class="map">
+          <svg id="map" viewBox="0 0 400 300" role="img" aria-label="Map of chunks with the question and its 5 nearest chunks"></svg>
+          <p class="note">Illustration: real embeddings have 384 dimensions. This flattens the idea to 2 so you can see it. Dots are chunks, colored by paper.</p>
+        </div>
+        <div>
+          <span class="eyebrow">Top 5 retrieved</span>
+          <ol class="results" id="results"></ol>
+        </div>
+      </div>
+    </div>
+
+    <dl class="params panel">
+      <dt>TOP_K</dt><dd>5 chunks are sent on to generation</dd>
+      <dt>distance</dt><dd>cosine distance: 0 means same direction, higher means less related</dd>
+    </dl>
+
+    <div class="panel">
+      <h3>The real result</h3>
+      <p class="muted" style="font-size:0.92rem">Question: "What problem does retrieval-augmented generation solve?" after the references fix.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Paper</th><th>Page</th><th>Distance</th></tr></thead>
+          <tbody>
+            <tr><td>[1]</td><td>rag-survey</td><td class="num">1</td><td class="num">0.371</td></tr>
+            <tr><td>[2]</td><td>rag-survey</td><td class="num">11</td><td class="num">0.391</td></tr>
+            <tr><td>[3]</td><td>rag-survey</td><td class="num">11</td><td class="num">0.398</td></tr>
+            <tr><td>[4]</td><td>rag-survey</td><td class="num">7</td><td class="num">0.428</td></tr>
+            <tr><td>[5]</td><td>rag-survey</td><td class="num">2</td><td class="num">0.438</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" style="font-size:0.88rem">All five come from one paper. That's correct here, since the survey's opening pages define the problem, but it also hints at a later improvement: re-ranking or diversifying results so other papers get a chance.</p>
+    </div>
+  </section>
+
+  <!-- ============ STAGE 3 ============ -->
+  <section class="stage c-generate" id="generation">
+    <div class="stage-head">
+      <span class="eyebrow">Stage 3 · RAG From Scratch, Part 4</span>
+      <h2>Generation: answer from the sources, with citations</h2>
+      <p class="muted">The retrieved chunks are numbered and pasted into the prompt. The model is told to use only those sources and to cite them, so every claim can be checked against a page.</p>
+    </div>
+
+    <div class="panel">
+      <h3>What the model receives</h3>
+      <div class="prompt">
+        <div class="part sys"><span class="tag">System prompt</span>You answer questions about AI research papers.
+Use ONLY the numbered sources provided. Cite them like [1], [2].
+If the sources don't contain the answer, say you don't know.</div>
+        <div class="part ctx"><span class="tag">Sources (from retrieval)</span>[1] (rag-survey, page 1)
+Retrieval-Augmented Generation for Large Language Models: A Survey …
+
+[2] (rag-survey, page 11)
+…
+
+[3] … [4] … [5] …</div>
+        <div class="part q"><span class="tag">Question</span>Question: What problem does retrieval-augmented generation solve?</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h3>What came back (Claude, via subscription)</h3>
+      <div class="answer">
+        <p>The survey names three weaknesses of LLMs that RAG targets: hallucination, outdated knowledge, and reasoning that can't be traced <cite>[1]</cite>.</p>
+        <p>RAG addresses them by pulling in knowledge from external databases. That makes answers more accurate and credible on knowledge-heavy tasks, and lets the knowledge be updated or specialised without retraining <cite>[1]</cite>.</p>
+      </div>
+      <p class="muted" style="font-size:0.85rem">Shortened. The local Llama 3.2 3B model gave the same three points with the same citation, in about 70 seconds on CPU.</p>
+    </div>
+
+    <div>
+      <span class="eyebrow" style="display:block;margin-bottom:10px">Swappable models · LLM_BACKEND</span>
+      <div class="backends">
+        <div class="backend"><code>ollama</code><b>Local Llama 3.2 3B</b><span>Free and offline. Slower and less polished.</span></div>
+        <div class="backend"><code>claude-code</code><b>Claude via subscription</b><span>Best answers. Uses your plan's limits.</span></div>
+        <div class="backend"><code>claude</code><b>Claude via API key</b><span>Same quality, billed per token.</span></div>
+      </div>
+      <p class="muted" style="font-size:0.9rem;margin-top:12px">Retrieval returned the same five chunks for every backend. Only the writing changed, which is why RAG lets you swap models freely.</p>
+    </div>
+
+    <div class="gotcha">
+      <span class="eyebrow">Why "use only the sources" matters</span>
+      <p>Without that instruction the model may mix in what it remembers from training, and you can no longer tell which claims come from your documents. With it, a wrong answer usually points back to a retrieval problem, which you can see and fix.</p>
+    </div>
+  </section>
+
+  <footer>
+    Next in the project: an evaluation set to measure answer quality, then Contextual Retrieval and re-ranking.
+  </footer>
+</div>
+
+<script>
+(function () {
+  // ---------- Chunking demo ----------
+  var SAMPLE = "Large language models answer from what they learned during training, so they can be out of date or invent facts. Retrieval-augmented generation adds a search step: before answering, the system looks up relevant passages in a document collection and gives them to the model. The model then writes its answer from those passages and can cite them, which makes the answer easier to check.";
+  var size = document.getElementById("size");
+  var overlap = document.getElementById("overlap");
+  var sizeOut = document.getElementById("sizeOut");
+  var overlapOut = document.getElementById("overlapOut");
+  var chunksEl = document.getElementById("chunks");
+
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;"); }
+
+  function renderChunks() {
+    var s = +size.value;
+    var o = Math.min(+overlap.value, s - 10);
+    sizeOut.textContent = s;
+    overlapOut.textContent = o;
+    var html = "";
+    var n = 0;
+    for (var start = 0; start < SAMPLE.length; start += s - o) {
+      var piece = SAMPLE.slice(start, start + s);
+      var shared = n === 0 ? 0 : Math.min(o, piece.length);
+      html += '<div class="chunk"><span class="id">c' + n + '</span>' +
+        (shared ? "<mark>" + esc(piece.slice(0, shared)) + "</mark>" : "") +
+        esc(piece.slice(shared)) + "</div>";
+      n++;
+      if (start + s >= SAMPLE.length) break;
+    }
+    chunksEl.innerHTML = html;
+  }
+  size.addEventListener("input", renderChunks);
+  overlap.addEventListener("input", renderChunks);
+  renderChunks();
+
+  // ---------- Embedding map (illustrative 2D) ----------
+  var PAPERS = {
+    "attention": "var(--index)",
+    "bert": "#5b8def",
+    "sentence-bert": "#2fa36b",
+    "rag-lewis-2020": "var(--retrieve)",
+    "rag-survey": "#d9534f",
+    "chain-of-thought": "var(--generate)",
+    "react": "#c45fa0"
+  };
+  var POINTS = [
+    ["attention", 18, 22, "Scaled dot-product attention"],
+    ["attention", 26, 30, "Multi-head attention"],
+    ["attention", 14, 34, "Positional encoding"],
+    ["attention", 24, 18, "Encoder and decoder stacks"],
+    ["bert", 36, 46, "Masked language modelling"],
+    ["bert", 30, 52, "Next sentence prediction"],
+    ["bert", 42, 54, "Fine-tuning on GLUE"],
+    ["sentence-bert", 48, 28, "Siamese network for sentence embeddings"],
+    ["sentence-bert", 54, 36, "Cosine similarity of embeddings"],
+    ["rag-lewis-2020", 70, 26, "Parametric vs non-parametric memory"],
+    ["rag-lewis-2020", 64, 32, "Dense passage retriever"],
+    ["rag-lewis-2020", 76, 34, "RAG-Sequence vs RAG-Token"],
+    ["rag-survey", 80, 42, "Hallucination and outdated knowledge"],
+    ["rag-survey", 74, 46, "Naive, Advanced and Modular RAG"],
+    ["rag-survey", 84, 52, "Evaluating retrieval quality"],
+    ["chain-of-thought", 36, 78, "Step-by-step reasoning examples"],
+    ["chain-of-thought", 44, 84, "Gains on arithmetic reasoning"],
+    ["react", 60, 72, "Thought, action, observation loop"],
+    ["react", 66, 80, "Wikipedia search actions"],
+    ["react", 56, 82, "Tool use reduces hallucination"]
+  ];
+  var QUESTIONS = [
+    { label: "What problem does RAG solve?", x: 76, y: 38 },
+    { label: "How does self-attention work?", x: 22, y: 26 },
+    { label: "How does ReAct combine reasoning and acting?", x: 54, y: 74 }
+  ];
+
+  var svg = document.getElementById("map");
+  var resultsEl = document.getElementById("results");
+  var qButtons = document.getElementById("qButtons");
+  var NS = "http://www.w3.org/2000/svg";
+  var SX = 4, SY = 3; // map 0..100 -> viewBox 400x300
+
+  function el(tag, attrs) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+
+  function renderMap(qi) {
+    var q = QUESTIONS[qi];
+    var ranked = POINTS.map(function (p, i) {
+      var dx = p[1] - q.x, dy = p[2] - q.y;
+      return { i: i, d: Math.sqrt(dx * dx + dy * dy) };
+    }).sort(function (a, b) { return a.d - b.d; }).slice(0, 5);
+    var top = {};
+    ranked.forEach(function (r) { top[r.i] = true; });
+
+    svg.innerHTML = "";
+    ranked.forEach(function (r) {
+      var p = POINTS[r.i];
+      svg.appendChild(el("line", {
+        x1: q.x * SX, y1: q.y * SY, x2: p[1] * SX, y2: p[2] * SY,
+        stroke: "var(--retrieve)", "stroke-width": 1.5, "stroke-dasharray": "4 3"
+      }));
+    });
+    POINTS.forEach(function (p, i) {
+      var c = el("circle", {
+        cx: p[1] * SX, cy: p[2] * SY, r: top[i] ? 7 : 5,
+        fill: PAPERS[p[0]], "fill-opacity": top[i] ? 1 : 0.45,
+        stroke: top[i] ? "var(--ink)" : "none", "stroke-width": 1.5
+      });
+      var t = el("title", {}); t.textContent = p[0] + ": " + p[3];
+      c.appendChild(t);
+      svg.appendChild(c);
+    });
+    svg.appendChild(el("rect", {
+      x: q.x * SX - 7, y: q.y * SY - 7, width: 14, height: 14,
+      fill: "var(--surface)", stroke: "var(--ink)", "stroke-width": 2,
+      transform: "rotate(45 " + q.x * SX + " " + q.y * SY + ")"
+    }));
+    var lbl = el("text", {
+      x: Math.min(q.x * SX + 12, 300), y: q.y * SY - 12,
+      fill: "var(--ink)", "font-size": 12, "font-family": "IBM Plex Sans, sans-serif", "font-weight": 600
+    });
+    lbl.textContent = "your question";
+    svg.appendChild(lbl);
+
+    resultsEl.innerHTML = ranked.map(function (r) {
+      var p = POINTS[r.i];
+      return "<li><span>" + p[3] + '<span class="src">' + p[0] + "</span></span>" +
+        '<span class="d">' + (r.d / 100).toFixed(2) + "</span></li>";
+    }).join("");
+
+    Array.prototype.forEach.call(qButtons.children, function (b, i) {
+      b.setAttribute("aria-pressed", i === qi ? "true" : "false");
+    });
+  }
+
+  QUESTIONS.forEach(function (q, i) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.id = "q" + i;
+    b.textContent = q.label;
+    b.addEventListener("click", function () { renderMap(i); });
+    qButtons.appendChild(b);
+  });
+  renderMap(0);
+})();
+</script>

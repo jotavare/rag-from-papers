@@ -1,0 +1,72 @@
+[
+  {
+    "question": "What problems of large language models does retrieval-augmented generation address?",
+    "source": "rag-survey",
+    "must_include": [["hallucinat"], ["outdated", "out-of-date", "up-to-date"]]
+  },
+  {
+    "question": "What are the three RAG paradigms described in the RAG survey?",
+    "source": "rag-survey",
+    "must_include": [["naive"], ["advanced"], ["modular"]]
+  },
+  {
+    "question": "What are the two RAG model formulations proposed by Lewis et al.?",
+    "source": "rag-lewis-2020",
+    "must_include": [["rag-sequence"], ["rag-token"]]
+  },
+  {
+    "question": "What retriever does the original RAG model use to find documents?",
+    "source": "rag-lewis-2020",
+    "must_include": [["dpr", "dense passage"]]
+  },
+  {
+    "question": "How many attention heads does the base Transformer model use?",
+    "source": "attention-is-all-you-need",
+    "must_include": [["8", "eight"]]
+  },
+  {
+    "question": "In scaled dot-product attention, what are the dot products scaled by?",
+    "source": "attention-is-all-you-need",
+    "must_include": [["square root", "sqrt", "√"]]
+  },
+  {
+    "question": "What two pre-training tasks is BERT trained on?",
+    "source": "bert",
+    "must_include": [["mask"], ["next sentence"]]
+  },
+  {
+    "question": "What percentage of input tokens does BERT mask during pre-training?",
+    "source": "bert",
+    "must_include": [["15"]]
+  },
+  {
+    "question": "What network structure does Sentence-BERT use to produce sentence embeddings?",
+    "source": "sentence-bert",
+    "must_include": [["siamese"]]
+  },
+  {
+    "question": "What is chain-of-thought prompting?",
+    "source": "chain-of-thought",
+    "must_include": [["intermediate", "step"]]
+  },
+  {
+    "question": "On which math word problem benchmark did chain-of-thought prompting with PaLM 540B reach state of the art?",
+    "source": "chain-of-thought",
+    "must_include": [["gsm8k"]]
+  },
+  {
+    "question": "What does ReAct interleave when solving tasks?",
+    "source": "react",
+    "must_include": [["reason"], ["act"]]
+  },
+  {
+    "question": "What external API does ReAct use for question answering on HotpotQA?",
+    "source": "react",
+    "must_include": [["wikipedia"]]
+  },
+  {
+    "question": "What is the capital of Portugal?",
+    "source": null,
+    "must_include": [["don't know", "do not know", "not contain", "don't contain", "no information", "not mention", "cannot answer"]]
+  }
+]

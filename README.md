@@ -51,9 +51,32 @@ $env:LLM_BACKEND = "claude-code"
 python ask.py "How does ReAct combine reasoning and acting?"
 ```
 
+## Evaluation
+
+`eval/questions.json` holds 14 questions with known answers: 13 answerable from a specific paper, plus one off-topic question the app should refuse.
+
+```bash
+python eval/run_eval.py             # retrieval only: free, a few seconds
+python eval/run_eval.py --answers   # also generate answers with LLM_BACKEND and keyword-check them
+```
+
+Baseline (fixed-size chunks, all-MiniLM-L6-v2, top 5, Claude via `claude-code`):
+
+| Metric | Score |
+|--------|-------|
+| Retrieval hit@5 (right paper in top 5) | 13/13 |
+| Retrieval MRR | 0.89 |
+| Answers passing keyword check | 12/14 |
+
+Both failures ask about the original RAG paper (Lewis et al.). The paper was retrieved, but not the passage holding the answer, and the model correctly replied that the sources don't say. Finding the right paper isn't enough; the right chunk has to be found too.
+
+## Explainer
+
+[`rag-explainer.html`](rag-explainer.html) is an illustrated walkthrough of the three stages with this project's real numbers. Open it in a browser.
+
 ## Next steps
 
-- [ ] Contextual Retrieval (Anthropic) — add context to each chunk before embedding
-- [ ] Query rewriting / multi-query (RAG From Scratch part 5+)
+- [ ] Contextual Retrieval (Anthropic): add context to each chunk before embedding, then re-run the eval
 - [ ] Re-ranking retrieved chunks
-- [ ] A small evaluation set to measure whether changes actually help
+- [ ] Query rewriting / multi-query (RAG From Scratch part 5+)
+- [x] A small evaluation set to measure whether changes actually help
