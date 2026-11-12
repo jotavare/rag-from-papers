@@ -1,9 +1,11 @@
 # rag-from-papers
 
 A minimal Retrieval-Augmented Generation (RAG) app that answers questions
-about classic AI research papers — with a local model (free, offline) or Claude.
+about classic AI research papers, using either a local model (free, offline) or Claude.
 
-Built while following LangChain's *RAG From Scratch* series (parts 1–4).
+I built this to learn how RAG works under the hood, while following LangChain's
+*RAG From Scratch* series (parts 1–4). Everything is kept small and readable on
+purpose: one file per stage, no frameworks.
 
 ## How it works
 
@@ -125,7 +127,7 @@ python eval/run_eval.py             # retrieval only: free, a few seconds
 python eval/run_eval.py --answers   # also generate answers with LLM_BACKEND and keyword-check them
 ```
 
-Baseline (fixed-size chunks, all-MiniLM-L6-v2, top 5, Claude via `claude-code`):
+My baseline (fixed-size chunks, all-MiniLM-L6-v2, top 5, Claude via `claude-code`):
 
 | Metric | Score |
 |--------|-------|
@@ -135,9 +137,16 @@ Baseline (fixed-size chunks, all-MiniLM-L6-v2, top 5, Claude via `claude-code`):
 
 Both failures ask about the original RAG paper (Lewis et al.). The paper was retrieved, but not the passage holding the answer, and the model correctly replied that the sources don't say. Finding the right paper isn't enough; the right chunk has to be found too.
 
+## What I learned
+
+- **Bad chunks look relevant.** My first index had 796 chunks, and half were bibliography pages. Reference lists are full of keywords like "retrieval", so they ranked high for almost every question while containing no answers. Skipping everything after the "References" heading halved the index and fixed the results.
+- **Retrieval and generation are independent.** The same 5 chunks came back no matter which LLM wrote the answer. Swapping models only changed the writing quality, which is why the backend is a single setting.
+- **Grounding works, but it exposes retrieval gaps.** Telling the model to use only the sources made it say "I don't know" instead of guessing. Every remaining failure is a retrieval problem I can see and measure.
+- **Measure before changing things.** One test question told me very little. A fixed set of 14 questions gives a baseline to compare every change against.
+
 ## Explainer
 
-[`rag-explainer.html`](rag-explainer.html) is an illustrated walkthrough of the three stages with this project's real numbers, including what Chroma and the embedding model do and how to swap them. Download it and open it in a browser.
+I made [`rag-explainer.html`](rag-explainer.html), an illustrated walkthrough of the three stages using the real numbers from this project, including what Chroma and the embedding model do and how to swap them. Download it and open it in a browser.
 
 ## Next steps
 

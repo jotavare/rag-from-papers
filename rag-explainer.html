@@ -1,3 +1,8 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Inside rag-from-papers</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -43,6 +48,7 @@
 
 * { box-sizing: border-box; }
 body {
+  margin: 0;
   background: var(--bg); color: var(--ink);
   font: 16px/1.6 var(--font-body);
 }
@@ -213,14 +219,18 @@ input[type="range"] { width: 100%; accent-color: var(--c); }
 pre.cmd { margin: 0; font: 0.85rem/1.6 var(--font-mono); background: var(--code-bg); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
 
 footer { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--line); padding-top: 20px; }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
 </style>
+</head>
+<body>
 
 <div class="wrap">
 
   <header class="intro">
     <span class="eyebrow">rag-from-papers · how it works</span>
     <h1>Inside rag-from-papers</h1>
-    <p>A RAG app answers a question in two moves: it finds the right passages in your documents, then asks a language model to answer using only those passages. This page walks through each stage with the real numbers from this project: 7 AI papers, 398 chunks, 14 test questions.</p>
+    <p>A RAG app answers a question in two moves: it finds the right passages in your documents, then asks a language model to answer using only those passages. I made this page to explain each stage of my project using its real numbers: 7 AI papers, 398 chunks, 14 test questions.</p>
     <nav class="toc" aria-label="Sections">
       <a href="#indexing">Indexing</a>
       <a href="#embedding-model">The embedding model</a>
@@ -288,8 +298,8 @@ footer { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--li
     </div>
 
     <div class="gotcha">
-      <span class="eyebrow">What went wrong in this project</span>
-      <p>The first run produced 796 chunks, and half were bibliography pages. Reference lists are packed with words like "retrieval" and "generation", so they looked very similar to questions while containing no answers. Three of the top five results for the first test question were citation lists. The fix was to stop reading each paper at its "References" heading.</p>
+      <span class="eyebrow">What went wrong in my first run</span>
+      <p>The first run produced 796 chunks, and half were bibliography pages. Reference lists are packed with words like "retrieval" and "generation", so they looked very similar to questions while containing no answers. Three of the top five results for the first test question were citation lists. I fixed it by stopping at each paper's "References" heading.</p>
       <div class="bars" aria-label="Chunk counts before and after the fix">
         <div class="bar-row"><span>First run</span><div class="bar-track"><div class="bar-fill" style="width:50%"></div><div class="bar-fill ref" style="width:50%"></div></div><span class="num">796</span></div>
         <div class="bar-row"><span>References skipped</span><div class="bar-track"><div class="bar-fill" style="width:50%"></div></div><span class="num">398</span></div>
@@ -303,7 +313,7 @@ footer { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--li
     <div class="stage-head">
       <span class="eyebrow">Stage 1 · under the hood</span>
       <h2>The embedding model: all-MiniLM-L6-v2</h2>
-      <p class="muted">An embedding model reads a piece of text and outputs a fixed list of numbers. Texts with similar meaning get similar lists, even when they share no words. This project uses the standard starter model: small, free, runs on a laptop CPU, and good enough to learn with.</p>
+      <p class="muted">An embedding model reads a piece of text and outputs a fixed list of numbers. Texts with similar meaning get similar lists, even when they share no words. I chose the standard starter model: small, free, runs on a laptop CPU, and good enough to learn with.</p>
     </div>
 
     <div class="panel">
@@ -351,7 +361,7 @@ footer { font-size: 0.85rem; color: var(--muted); border-top: 1px solid var(--li
             <tr class="current"><td><code>all-MiniLM-L6-v2</code></td><td>384 numbers, ~90 MB</td><td>Current choice. Fast and free.</td></tr>
             <tr><td><code>BAAI/bge-small-en-v1.5</code></td><td>384 numbers, similar size</td><td>Usually more accurate at retrieval, and reads up to 512 tokens. The easiest swap.</td></tr>
             <tr><td><code>all-mpnet-base-v2</code></td><td>768 numbers, ~5x larger</td><td>More accurate, slower.</td></tr>
-            <tr><td><code>nomic-embed-text</code></td><td>runs in Ollama</td><td>Reads long inputs, and Ollama is already installed.</td></tr>
+            <tr><td><code>nomic-embed-text</code></td><td>runs in Ollama</td><td>Reads long inputs, and runs in Ollama, which this project already uses for answers.</td></tr>
             <tr><td>Voyage AI</td><td>paid API</td><td>The embedding provider Anthropic recommends.</td></tr>
           </tbody>
         </table>
@@ -461,6 +471,7 @@ page: 1</pre></div>
 
     <div class="panel">
       <h3>What the model receives</h3>
+      <p class="muted small">This is the prompt <code>generation.py</code> builds for my test question.</p>
       <div class="prompt">
         <div class="part sys"><span class="tag">System prompt</span>You answer questions about AI research papers.
 Use ONLY the numbered sources provided. Cite them like [1], [2].
@@ -489,7 +500,7 @@ Retrieval-Augmented Generation for Large Language Models: A Survey …
       <h3>Swappable models: <code>LLM_BACKEND</code></h3>
       <div class="cards">
         <div class="card"><code>ollama</code><b>Local Llama 3.2 3B</b><span>Free and offline. Slower and less polished.</span></div>
-        <div class="card"><code>claude-code</code><b>Claude via subscription</b><span>Best answers. Uses your plan's limits.</span></div>
+        <div class="card"><code>claude-code</code><b>Claude via subscription</b><span>Best answers. Counts against the plan's usage limits.</span></div>
         <div class="card"><code>claude</code><b>Claude via API key</b><span>Same quality, billed per token.</span></div>
       </div>
       <p class="muted small">Retrieval returned the same five chunks for every backend; only the writing changed. That separation is why RAG lets you swap models freely.</p>
@@ -524,12 +535,12 @@ Retrieval-Augmented Generation for Large Language Models: A Survey …
       <h3>Run it yourself</h3>
       <pre class="cmd">python eval/run_eval.py             # retrieval only: free, a few seconds
 python eval/run_eval.py --answers   # also generate and check answers</pre>
-      <p class="muted small">Next experiments to score against this baseline: a stronger embedding model, Contextual Retrieval (adding a short description to each chunk before embedding), and re-ranking.</p>
+      <p class="muted small">The experiments I plan to score against this baseline: a stronger embedding model, Contextual Retrieval (adding a short description to each chunk before embedding), and re-ranking.</p>
     </div>
   </section>
 
   <footer>
-    rag-from-papers · built while following LangChain's RAG From Scratch series, parts 1 to 4.
+    I built rag-from-papers while following LangChain's RAG From Scratch series, parts 1 to 4. Code: <a href="https://github.com/jotavare/rag-from-papers">github.com/jotavare/rag-from-papers</a>
   </footer>
 </div>
 
@@ -684,3 +695,5 @@ python eval/run_eval.py --answers   # also generate and check answers</pre>
   renderMap(0);
 })();
 </script>
+</body>
+</html>
