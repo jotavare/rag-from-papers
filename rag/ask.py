@@ -1,17 +1,17 @@
 """Ask a question: runs retrieval, then generation.
 
-Usage:  python ask.py "your question"
+Usage:  python -m rag.ask "your question"
 """
 
 import sys
 
-from generation import BACKEND, generate
-from retrieval import retrieve
+from rag.generation import BACKEND, generate
+from rag.retrieval import retrieve
 
 
 def main() -> None:
     if len(sys.argv) < 2:
-        raise SystemExit('Usage: python ask.py "your question"')
+        raise SystemExit('Usage: python -m rag.ask "your question"')
     question = " ".join(sys.argv[1:])
 
     chunks = retrieve(question)

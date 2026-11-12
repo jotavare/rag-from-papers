@@ -2,7 +2,7 @@
 
 load PDFs -> split into chunks -> embed each chunk -> store in a vector DB
 
-Run once (and again whenever docs/ changes):  python indexing.py
+Run once (and again whenever the papers change):  python -m rag.indexing
 """
 
 from pathlib import Path
@@ -11,10 +11,7 @@ import chromadb
 from pypdf import PdfReader
 from sentence_transformers import SentenceTransformer
 
-DOCS_DIR = Path("docs")
-DB_DIR = "chroma_db"
-COLLECTION = "papers"
-EMBED_MODEL = "all-MiniLM-L6-v2"  # small, fast, runs on CPU
+from rag.config import COLLECTION, DB_DIR, EMBED_MODEL, PAPERS_DIR
 
 CHUNK_SIZE = 1000  # characters per chunk
 CHUNK_OVERLAP = 200  # characters shared between neighbouring chunks
@@ -58,9 +55,9 @@ def chunk_text(text: str) -> list[str]:
 
 
 def main() -> None:
-    pdfs = sorted(DOCS_DIR.glob("*.pdf"))
+    pdfs = sorted(PAPERS_DIR.glob("*.pdf"))
     if not pdfs:
-        raise SystemExit("No PDFs in docs/. Run: python download_papers.py")
+        raise SystemExit(f"No PDFs in {PAPERS_DIR}. Run: python -m rag.download_papers")
 
     ids, documents, metadatas = [], [], []
     for pdf in pdfs:
@@ -75,7 +72,7 @@ def main() -> None:
     model = SentenceTransformer(EMBED_MODEL)
     embeddings = model.encode(documents, show_progress_bar=True).tolist()
 
-    client = chromadb.PersistentClient(path=DB_DIR)
+    client = chromadb.PersistentClient(path=str(DB_DIR))
     # Start fresh each time so re-running doesn't create duplicates.
     try:
         client.delete_collection(COLLECTION)
@@ -91,7 +88,7 @@ def main() -> None:
             embeddings=embeddings[i : i + batch],
             metadatas=metadatas[i : i + batch],
         )
-    print(f"stored {collection.count()} chunks in {DB_DIR}/")
+    print(f"stored {collection.count()} chunks in {DB_DIR}")
 
 
 if __name__ == "__main__":

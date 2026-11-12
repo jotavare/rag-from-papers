@@ -3,11 +3,9 @@
 __pycache__/
 *.pyc
 
-# Downloaded papers (fetched by download_papers.py, not committed)
-docs/
-
-# Local vector database (rebuilt by ingest.py)
-chroma_db/
+# Local data: papers are fetched by rag/download_papers.py,
+# the vector database is rebuilt by rag/indexing.py
+data/
 
 # Secrets
 .env

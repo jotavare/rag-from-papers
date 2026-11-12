@@ -10,19 +10,15 @@ Answers (only with --answers, uses LLM_BACKEND):
          in a group counts). Crude, but cheap and repeatable.
 
 Run from the project root:
-  python eval/run_eval.py
-  python eval/run_eval.py --answers
+  python -m eval.run_eval
+  python -m eval.run_eval --answers
 """
 
 import argparse
 import json
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT))
-
-from retrieval import TOP_K, retrieve  # noqa: E402
+from rag.retrieval import TOP_K, retrieve
 
 QUESTIONS_FILE = Path(__file__).with_name("questions.json")
 
@@ -38,7 +34,7 @@ def main() -> None:
     args = parser.parse_args()
 
     if args.answers:
-        from generation import BACKEND, generate
+        from rag.generation import BACKEND, generate
 
     questions = json.loads(QUESTIONS_FILE.read_text(encoding="utf-8"))
     retrieval_rows = [q for q in questions if q["source"]]

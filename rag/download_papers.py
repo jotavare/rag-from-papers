@@ -1,14 +1,13 @@
-"""Download a small set of public AI papers from arXiv into docs/.
+"""Download a small set of public AI papers from arXiv into data/papers/.
 
 The PDFs are not committed to the repo (see .gitignore); anyone who clones
-it runs this script to fetch them.
+it runs this script to fetch them:  python -m rag.download_papers
 """
 
 import time
 import urllib.request
-from pathlib import Path
 
-DOCS_DIR = Path("docs")
+from rag.config import PAPERS_DIR
 
 # arXiv ID -> short file name
 PAPERS = {
@@ -23,9 +22,9 @@ PAPERS = {
 
 
 def main() -> None:
-    DOCS_DIR.mkdir(exist_ok=True)
+    PAPERS_DIR.mkdir(parents=True, exist_ok=True)
     for arxiv_id, name in PAPERS.items():
-        target = DOCS_DIR / f"{name}.pdf"
+        target = PAPERS_DIR / f"{name}.pdf"
         if target.exists():
             print(f"skip  {target} (already downloaded)")
             continue

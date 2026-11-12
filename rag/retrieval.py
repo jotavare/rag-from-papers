@@ -8,7 +8,7 @@ from functools import lru_cache
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-from indexing import COLLECTION, DB_DIR, EMBED_MODEL
+from rag.config import COLLECTION, DB_DIR, EMBED_MODEL
 
 TOP_K = 5  # how many chunks to return
 
@@ -20,7 +20,7 @@ def _model() -> SentenceTransformer:
 
 @lru_cache(maxsize=1)
 def _collection():
-    return chromadb.PersistentClient(path=DB_DIR).get_collection(COLLECTION)
+    return chromadb.PersistentClient(path=str(DB_DIR)).get_collection(COLLECTION)
 
 
 def retrieve(question: str, top_k: int = TOP_K) -> list[dict]:
