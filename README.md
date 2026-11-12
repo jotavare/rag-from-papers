@@ -1,17 +1,21 @@
 # rag-from-papers
 
 A minimal Retrieval-Augmented Generation (RAG) app that answers questions
-about classic AI research papers, using Claude to write the answers.
+about classic AI research papers — with a local model (free, offline) or Claude.
 
 Built while following LangChain's *RAG From Scratch* series (parts 1–4).
 
 ## How it works
 
-| Step | File | What happens |
+Each file is one step of the pipeline:
+
+| File | Step | What happens |
 |------|------|--------------|
-| Indexing | `ingest.py` | PDFs → text → overlapping 1000-char chunks → embeddings (`all-MiniLM-L6-v2`) → stored in a local Chroma DB |
-| Retrieval | `ask.py` | The question is embedded the same way; the 5 most similar chunks are fetched |
-| Generation | `ask.py` | The chunks go into the prompt as numbered sources; Claude answers and cites them |
+| `indexing.py` | Indexing (Part 2) | PDFs → text (reference sections skipped) → overlapping 1000-char chunks → embeddings (`all-MiniLM-L6-v2`) → local Chroma DB |
+| `retrieval.py` | Retrieval (Part 3) | The question is embedded the same way; the 5 most similar chunks are fetched |
+| `generation.py` | Generation (Part 4) | The chunks go into the prompt as numbered sources; an LLM answers and cites them |
+| `ask.py` | — | Runs retrieval, then generation |
+| `download_papers.py` | Setup | Fetches the papers from arXiv |
 
 ## Papers
 
@@ -25,23 +29,27 @@ Chain-of-Thought, ReAct, and a RAG survey (Gao et al. 2023).
 python -m venv .venv
 .venv\Scripts\activate          # Windows  (macOS/Linux: source .venv/bin/activate)
 pip install -r requirements.txt
-```
-
-Set your Anthropic API key (get one at https://console.anthropic.com):
-
-```bash
-setx ANTHROPIC_API_KEY "sk-ant-..."   # Windows; open a new terminal afterwards
-```
-
-## Usage
-
-```bash
 python download_papers.py
-python ingest.py
-python ask.py "What problem does retrieval-augmented generation solve?"
+python indexing.py
 ```
 
-Use a different Claude model with the `CLAUDE_MODEL` environment variable.
+## Choosing the model that writes answers
+
+Set `LLM_BACKEND` (retrieval is the same for all of them):
+
+| Backend | Needs | Notes |
+|---------|-------|-------|
+| `ollama` (default) | [Ollama](https://ollama.com) + `ollama pull llama3.2:3b` | Free and offline; ~1 min per answer on CPU. Change model with `OLLAMA_MODEL` |
+| `claude-code` | [Claude Code](https://claude.com/claude-code) signed in to a Claude subscription | Uses your plan's usage limits; no API key |
+| `claude` | `ANTHROPIC_API_KEY` | Anthropic API; change model with `CLAUDE_MODEL` |
+
+```bash
+python ask.py "What problem does retrieval-augmented generation solve?"
+
+# PowerShell: pick another backend for this terminal
+$env:LLM_BACKEND = "claude-code"
+python ask.py "How does ReAct combine reasoning and acting?"
+```
 
 ## Next steps
 

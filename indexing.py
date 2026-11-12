@@ -1,6 +1,8 @@
-"""Step 1 of RAG: indexing.
+"""RAG step 1 — Indexing (RAG From Scratch, Part 2).
 
 load PDFs -> split into chunks -> embed each chunk -> store in a vector DB
+
+Run once (and again whenever docs/ changes):  python indexing.py
 """
 
 from pathlib import Path
