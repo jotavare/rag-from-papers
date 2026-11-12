@@ -25,6 +25,8 @@
   --generate-soft: #ebe5fa;
   --measure: #2e7d4f;    /* evaluation */
   --measure-soft: #e1f2e7;
+  --plan: #2f5fc4;       /* optional: planning */
+  --plan-soft: #e2eafb;
   --warn: #b3261e;
   --code-bg: #eef2f6;
   --font-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
@@ -36,6 +38,7 @@
     --bg: #10151c; --surface: #171e27; --ink: #e6ebf1; --muted: #98a5b4; --faint: #4d5a69; --line: #2a3542;
     --index: #4cc3ca; --index-soft: #12333a; --retrieve: #f0a83c; --retrieve-soft: #3a2b12;
     --generate: #a993f0; --generate-soft: #2a2348; --measure: #5fcb8c; --measure-soft: #163322;
+    --plan: #7fa6f2; --plan-soft: #18284a;
     --warn: #f2867e; --code-bg: #1d2631; color-scheme: dark;
   }
 }
@@ -43,6 +46,7 @@
   --bg: #10151c; --surface: #171e27; --ink: #e6ebf1; --muted: #98a5b4; --faint: #4d5a69; --line: #2a3542;
   --index: #4cc3ca; --index-soft: #12333a; --retrieve: #f0a83c; --retrieve-soft: #3a2b12;
   --generate: #a993f0; --generate-soft: #2a2348; --measure: #5fcb8c; --measure-soft: #163322;
+  --plan: #7fa6f2; --plan-soft: #18284a;
   --warn: #f2867e; --code-bg: #1d2631; color-scheme: dark;
 }
 
@@ -84,7 +88,7 @@ a { color: inherit; text-underline-offset: 3px; }
 
 /* Pipeline strip */
 .pipeline { display: grid; gap: 12px; }
-.flow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
 .step {
   border-radius: 10px; padding: 16px; display: grid; gap: 6px; align-content: start;
   background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--c);
@@ -93,7 +97,23 @@ a { color: inherit; text-underline-offset: 3px; }
 .step p { font-size: 0.9rem; color: var(--muted); }
 .step .file { font: 500 0.85rem var(--font-mono); color: var(--ink); }
 .when { font-size: 0.8rem; font-family: var(--font-mono); color: var(--muted); }
+.step.optional { border-style: dashed; border-top-style: solid; }
+@media (max-width: 820px) { .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) { .flow { grid-template-columns: minmax(0, 1fr); } }
+
+/* Reciprocal-rank bars (MRR explainer) */
+.rr { display: grid; gap: 14px; }
+.rr-row { display: grid; grid-template-columns: 110px minmax(0, 1fr) 52px; gap: 12px; align-items: end; }
+.rr-row > span { font-size: 0.85rem; color: var(--muted); padding-bottom: 2px; }
+.rr-row .mrr { font: 600 1rem var(--font-mono); color: var(--c); text-align: right; font-variant-numeric: tabular-nums; }
+.rr-bars { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 3px; height: 72px; padding-top: 16px; align-items: end; border-bottom: 1px solid var(--line); }
+.rr-bars i { display: block; background: var(--c); border-radius: 2px 2px 0 0; position: relative; }
+.rr-bars i.miss { background: var(--warn); }
+.rr-bars i b { position: absolute; bottom: 100%; left: 0; right: 0; text-align: center; font: 500 0.62rem var(--font-mono); color: var(--muted); font-style: normal; }
+.rr-axis { display: grid; grid-template-columns: 110px minmax(0, 1fr) 52px; gap: 12px; font: 0.7rem var(--font-mono); color: var(--muted); }
+.rr-axis div { display: grid; grid-template-columns: repeat(13, minmax(0, 1fr)); gap: 3px; text-align: center; }
+@media (max-width: 480px) { .rr-row, .rr-axis { grid-template-columns: 72px minmax(0, 1fr) 40px; } }
+.formula { font: 0.95rem/1.7 var(--font-mono); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; overflow-x: auto; }
 
 /* Stage sections */
 .stage { display: grid; gap: 20px; }
@@ -103,6 +123,7 @@ a { color: inherit; text-underline-offset: 3px; }
 .c-retrieve { --c: var(--retrieve); --c-soft: var(--retrieve-soft); }
 .c-generate { --c: var(--generate); --c-soft: var(--generate-soft); }
 .c-measure { --c: var(--measure); --c-soft: var(--measure-soft); }
+.c-plan { --c: var(--plan); --c-soft: var(--plan-soft); }
 
 .substeps { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 .substep { display: grid; gap: 4px; align-content: start; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
@@ -236,11 +257,13 @@ img { max-width: 100%; }
       <a href="#indexing">Indexing</a>
       <a href="#embedding-model">The embedding model</a>
       <a href="#chroma">Chroma</a>
+      <a href="#planning">Planning</a>
       <a href="#retrieval">Retrieval</a>
       <a href="#generation">Generation</a>
       <a href="#evaluation">Measuring it</a>
+      <a href="#mrr">What MRR means</a>
     </nav>
-    <p class="snapshot small">Numbers on this page are from my baseline run in November 2026. For setup, usage and the latest results, see the <a href="https://github.com/jotavare/rag-from-papers#readme">README</a>.</p>
+    <p class="snapshot small">Numbers on this page are from my runs in November 2026: the baseline, and the baseline with search planning. For setup, usage and the latest results, see the <a href="https://github.com/jotavare/rag-from-papers#readme">README</a>.</p>
   </header>
 
   <section class="pipeline" aria-label="Pipeline overview">
@@ -250,6 +273,12 @@ img { max-width: 100%; }
         <span class="file">rag/indexing.py</span>
         <p>Papers → chunks → vectors → Chroma</p>
         <span class="when">runs once, ahead of time</span>
+      </div>
+      <div class="step c-plan optional">
+        <span class="eyebrow">Optional · Planning</span>
+        <span class="file">rag/planning.py</span>
+        <p>Question → LLM → which paper + search phrase</p>
+        <span class="when">only with --plan</span>
       </div>
       <div class="step c-retrieve">
         <span class="eyebrow">Stage 2 · Retrieval</span>
@@ -264,7 +293,7 @@ img { max-width: 100%; }
         <span class="when">runs on every question</span>
       </div>
     </div>
-    <p class="muted small">Indexing is like building a library's card catalogue: done once. Retrieval and generation happen each time you run <code>python -m rag.ask "…"</code>.</p>
+    <p class="muted small">Indexing is like building a library's card catalogue: done once. Retrieval and generation happen each time you run <code>python -m rag.ask "…"</code>. Planning runs first when you add <code>--plan</code>.</p>
   </section>
 
   <!-- ============ STAGE 1 ============ -->
@@ -416,6 +445,55 @@ page: 1</pre></div>
     </div>
   </section>
 
+  <!-- ============ PLANNING ============ -->
+  <section class="stage c-plan" id="planning">
+    <div class="stage-head">
+      <span class="eyebrow">Optional step · rag/planning.py · --plan</span>
+      <h2>Planning: let the LLM decide where to look</h2>
+      <p class="muted">Retrieval on its own can't read. It turns the question into numbers and grabs whatever sounds closest. Planning adds one LLM call before the search: the model reads the question, decides which paper it's about, and writes a better search phrase. People often call this an "agent" step, because the LLM makes a decision instead of only writing text.</p>
+    </div>
+
+    <div class="substeps">
+      <div class="substep"><b>Without planning</b><span>The LLM is used once, at the end. It must answer from whatever 5 chunks the search picked, even if they're the wrong ones.</span></div>
+      <div class="substep"><b>With planning</b><span>The LLM is used twice: first to plan the search, then to write the answer from what that search found.</span></div>
+    </div>
+
+    <div class="panel">
+      <h3>The question that needed it</h3>
+      <p class="muted small">"What retriever does the original RAG model use?" To a person, "the original RAG model" points straight at the Lewis et al. paper. To an embedding it's just text that sounds like "RAG", and the survey talks about RAG far more, so its chunks win.</p>
+      <div class="prompt">
+        <div class="part sys"><span class="tag">The LLM receives</span>The list of 7 papers with titles and authors, and the question.
+Reply with ONLY: {"paper": "&lt;paper id or null&gt;", "query": "&lt;search phrase&gt;"}</div>
+        <div class="part ctx"><span class="tag">The plan it returned</span>{"paper": "rag-lewis-2020",
+ "query": "retriever Dense Passage Retriever DPR bi-encoder non-parametric memory"}</div>
+        <div class="part q"><span class="tag">Then retrieval</span>searches only chunks where source = rag-lewis-2020, using the new phrase</div>
+      </div>
+      <p class="muted small">If the LLM can't tell which paper a question is about, it returns <code>null</code> and retrieval searches all papers, as before. The off-topic question about Portugal's capital did exactly that.</p>
+    </div>
+
+    <div class="panel">
+      <h3>Where the expected paper ranked</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Question</th><th>Without planning</th><th>With planning</th></tr></thead>
+          <tbody>
+            <tr><td>Two RAG model formulations (Lewis et al.)</td><td class="num">4th</td><td class="num">1st</td></tr>
+            <tr><td>Retriever used by the original RAG model</td><td class="num">3rd</td><td class="num">1st</td></tr>
+            <tr><td>The other 11 questions</td><td class="num">1st</td><td class="num">1st</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted small">Both Lewis questions went from "the sources don't say" to correct, cited answers.</p>
+    </div>
+
+    <div class="gotcha">
+      <span class="eyebrow">What it costs</span>
+      <p><b>Two LLM calls per question instead of one.</b> Slower, and it uses more of a plan's limits.</p>
+      <p><b>It isn't consistent.</b> For "What problems does RAG address?", one run chose all papers and passed; another narrowed it to the survey with a worse search phrase and failed. Same question, different plan.</p>
+      <p><b>The plan can leak the model's own knowledge.</b> The search phrase above already contains "Dense Passage Retriever DPR", which is the answer. The LLM knew it from training. That helped here, but it means the search is no longer driven only by the documents.</p>
+    </div>
+  </section>
+
   <!-- ============ STAGE 2 ============ -->
   <section class="stage c-retrieve" id="retrieval">
     <div class="stage-head">
@@ -523,21 +601,86 @@ Retrieval-Augmented Generation for Large Language Models: A Survey …
     </div>
 
     <div class="scores">
-      <div class="score"><b>13/13</b><span>Right paper in the top 5 (hit@5)</span></div>
-      <div class="score"><b>0.89</b><span>MRR: 1.0 would mean the right paper always ranks first</span></div>
-      <div class="score"><b>12/14</b><span>Answers containing the expected facts (Claude)</span></div>
+      <div class="score"><b>13/13</b><span>hit@5: right paper in the top 5, with or without planning</span></div>
+      <div class="score"><b>0.89 → 1.00</b><span>MRR: how high the right paper ranks, before → after planning</span></div>
+      <div class="score"><b>12 → 13/14</b><span>Answers containing the expected facts (Claude)</span></div>
     </div>
 
     <div class="gotcha">
-      <span class="eyebrow">What the two failures show</span>
-      <p>Both asked about the original RAG paper (Lewis et al.): its two model variants, and which retriever it uses. The paper was retrieved, ranking 4th and 3rd, but not the passage that holds the answer. Claude replied that the sources don't say, instead of guessing. So the grounding instruction works, and the weak spot is retrieval precision: finding the right paper isn't enough, the right chunk has to be found too.</p>
+      <span class="eyebrow">What the baseline's two failures showed</span>
+      <p>Both asked about the original RAG paper (Lewis et al.): its two model variants, and which retriever it uses. The paper was retrieved, ranking 4th and 3rd, but not the passage that holds the answer. Claude replied that the sources don't say, instead of guessing. So the grounding instruction works, and the weak spot was retrieval precision: finding the right paper isn't enough, the right chunk has to be found too. <a href="#planning">Planning</a> fixed both.</p>
     </div>
 
     <div class="panel">
       <h3>Run it yourself</h3>
-      <pre class="cmd">python -m eval.run_eval             # retrieval only: free, a few seconds
-python -m eval.run_eval --answers   # also generate and check answers</pre>
-      <p class="muted small">The experiments I plan to score against this baseline: a stronger embedding model, Contextual Retrieval (adding a short description to each chunk before embedding), and re-ranking.</p>
+      <pre class="cmd">python -m eval.run_eval                    # retrieval only: free, a few seconds
+python -m eval.run_eval --answers          # also generate and check answers
+python -m eval.run_eval --plan --answers   # the same, with the planning step</pre>
+      <p class="muted small">I also tried a newer embedding model, <code>bge-small-en-v1.5</code>. It did worse on these papers (MRR 0.85), so I kept MiniLM. Next to try: Contextual Retrieval (adding a short description to each chunk before embedding) and re-ranking.</p>
+    </div>
+  </section>
+
+  <!-- ============ MRR ============ -->
+  <section class="stage c-measure" id="mrr">
+    <div class="stage-head">
+      <span class="eyebrow">Measuring it · the metrics</span>
+      <h2>What hit@5 and MRR mean</h2>
+      <p class="muted">Both metrics only look at retrieval: did the search bring back chunks from the paper that holds the answer? They don't need an LLM, so they're free and run in seconds.</p>
+    </div>
+
+    <div class="substeps">
+      <div class="substep"><b>hit@5</b><span>Was the expected paper anywhere in the top 5 results? Yes or no per question, then counted. It ignores position: 5th place counts the same as 1st.</span></div>
+      <div class="substep"><b>MRR (mean reciprocal rank)</b><span>How high was the expected paper? Each question scores 1 divided by the rank of the first correct result, then the scores are averaged.</span></div>
+    </div>
+
+    <div class="panel">
+      <h3>Scoring one question</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>First correct result at</th><th>Reciprocal rank</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td class="num">rank 1</td><td class="num">1 / 1 = 1.00</td><td>Perfect: the best match was right</td></tr>
+            <tr><td class="num">rank 2</td><td class="num">1 / 2 = 0.50</td><td>One wrong chunk ranked above it</td></tr>
+            <tr><td class="num">rank 3</td><td class="num">1 / 3 = 0.33</td><td></td></tr>
+            <tr><td class="num">rank 4</td><td class="num">1 / 4 = 0.25</td><td></td></tr>
+            <tr><td class="num">not in top 5</td><td class="num">0</td><td>Missed (also a hit@5 miss)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted small">The score drops fast after rank 1. That's on purpose: the generator reads the top chunks first, and in a real app a user rarely looks past the first result.</p>
+    </div>
+
+    <div class="panel">
+      <h3>My 13 questions, scored</h3>
+      <p class="muted small">Each bar is one question's reciprocal rank. A full bar means the expected paper ranked first; the number above is its rank.</p>
+      <div class="rr">
+        <div class="rr-row">
+          <span>Baseline</span>
+          <div class="rr-bars" role="img" aria-label="Baseline: questions 3 and 4 ranked 4th and 3rd, all others ranked 1st">
+            <i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i class="miss" style="height:25%"><b>4</b></i><i class="miss" style="height:33%"><b>3</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i>
+          </div>
+          <span class="mrr">0.89</span>
+        </div>
+        <div class="rr-row">
+          <span>With planning</span>
+          <div class="rr-bars" role="img" aria-label="With planning: all 13 questions ranked 1st">
+            <i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i><i style="height:100%"><b>1</b></i>
+          </div>
+          <span class="mrr">1.00</span>
+        </div>
+        <div class="rr-axis" aria-hidden="true">
+          <span></span>
+          <div><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span></div>
+          <span></span>
+        </div>
+      </div>
+      <p class="formula">Baseline MRR = (11 × 1.00 + 0.25 + 0.33) ÷ 13 = 11.58 ÷ 13 = <b>0.89</b><br>With planning = (13 × 1.00) ÷ 13 = <b>1.00</b></p>
+    </div>
+
+    <div class="gotcha">
+      <span class="eyebrow">Why track both</span>
+      <p>Both runs score a perfect 13/13 on hit@5, so hit@5 alone says nothing changed. MRR shows the difference: in the baseline the Lewis paper was found, but buried at 3rd and 4th, below chunks that didn't hold the answer. That's exactly why two answers failed.</p>
+      <p>Neither metric checks the exact passage, only the paper. A rank of 1 means the top chunk came from the right paper, not that it contained the answer. The answer check (<code>--answers</code>) catches that.</p>
     </div>
   </section>
 
