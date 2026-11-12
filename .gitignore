@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Downloaded papers (fetched by download_papers.py, not committed)
+docs/
+
+# Local vector database (rebuilt by ingest.py)
+chroma_db/
+
+# Secrets
+.env
