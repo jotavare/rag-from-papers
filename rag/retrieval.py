@@ -8,7 +8,7 @@ from functools import lru_cache
 import chromadb
 from sentence_transformers import SentenceTransformer
 
-from rag.config import COLLECTION, DB_DIR, EMBED_MODEL
+from rag.config import COLLECTION, DB_DIR, EMBED_MODEL, QUERY_PREFIX
 
 TOP_K = 5  # how many chunks to return
 
@@ -20,12 +20,19 @@ def _model() -> SentenceTransformer:
 
 @lru_cache(maxsize=1)
 def _collection():
-    return chromadb.PersistentClient(path=str(DB_DIR)).get_collection(COLLECTION)
+    collection = chromadb.PersistentClient(path=str(DB_DIR)).get_collection(COLLECTION)
+    indexed_with = (collection.metadata or {}).get("embed_model")
+    if indexed_with and indexed_with != EMBED_MODEL:
+        raise SystemExit(
+            f"The index was built with {indexed_with}, but EMBED_MODEL is {EMBED_MODEL}. "
+            "Vectors from different models can't be compared: run python -m rag.indexing"
+        )
+    return collection
 
 
 def retrieve(question: str, top_k: int = TOP_K) -> list[dict]:
     """Return the top_k chunks most similar to the question."""
-    query_embedding = _model().encode([question]).tolist()
+    query_embedding = _model().encode([QUERY_PREFIX + question]).tolist()
 
     collection = _collection()
     result = collection.query(query_embeddings=query_embedding, n_results=top_k)

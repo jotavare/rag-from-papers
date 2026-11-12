@@ -78,7 +78,10 @@ def main() -> None:
         client.delete_collection(COLLECTION)
     except Exception:
         pass
-    collection = client.create_collection(COLLECTION, metadata={"hnsw:space": "cosine"})
+    # Remember which model built the index, so retrieval can refuse a mismatch.
+    collection = client.create_collection(
+        COLLECTION, metadata={"hnsw:space": "cosine", "embed_model": EMBED_MODEL}
+    )
 
     batch = 1000  # Chroma limits how much can be added in one call
     for i in range(0, len(ids), batch):
