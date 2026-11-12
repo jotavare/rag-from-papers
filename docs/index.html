@@ -80,6 +80,7 @@ a { color: inherit; text-underline-offset: 3px; }
 .intro p { font-size: 1.1rem; color: var(--muted); }
 .toc { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 0.9rem; }
 .toc a { color: var(--muted); }
+.snapshot { color: var(--muted); border: 1px dashed var(--line); border-radius: 8px; padding: 10px 14px; }
 
 /* Pipeline strip */
 .pipeline { display: grid; gap: 12px; }
@@ -239,30 +240,31 @@ img { max-width: 100%; }
       <a href="#generation">Generation</a>
       <a href="#evaluation">Measuring it</a>
     </nav>
+    <p class="snapshot small">Numbers on this page are from my baseline run in November 2026. For setup, usage and the latest results, see the <a href="https://github.com/jotavare/rag-from-papers#readme">README</a>.</p>
   </header>
 
   <section class="pipeline" aria-label="Pipeline overview">
     <div class="flow">
       <div class="step c-index">
         <span class="eyebrow">Stage 1 · Indexing</span>
-        <span class="file">indexing.py</span>
+        <span class="file">rag/indexing.py</span>
         <p>Papers → chunks → vectors → Chroma</p>
         <span class="when">runs once, ahead of time</span>
       </div>
       <div class="step c-retrieve">
         <span class="eyebrow">Stage 2 · Retrieval</span>
-        <span class="file">retrieval.py</span>
+        <span class="file">rag/retrieval.py</span>
         <p>Question → vector → 5 closest chunks</p>
         <span class="when">runs on every question</span>
       </div>
       <div class="step c-generate">
         <span class="eyebrow">Stage 3 · Generation</span>
-        <span class="file">generation.py</span>
+        <span class="file">rag/generation.py</span>
         <p>Chunks + question → LLM → cited answer</p>
         <span class="when">runs on every question</span>
       </div>
     </div>
-    <p class="muted small">Indexing is like building a library's card catalogue: done once. Retrieval and generation happen each time you run <code>python ask.py "…"</code>.</p>
+    <p class="muted small">Indexing is like building a library's card catalogue: done once. Retrieval and generation happen each time you run <code>python -m rag.ask "…"</code>.</p>
   </section>
 
   <!-- ============ STAGE 1 ============ -->
@@ -366,7 +368,7 @@ img { max-width: 100%; }
           </tbody>
         </table>
       </div>
-      <p class="muted small">To compare, change <code>EMBED_MODEL</code> in <code>indexing.py</code>, run <code>python indexing.py</code> again, then <code>python eval/run_eval.py</code>. Re-indexing is required: vectors from different models aren't comparable.</p>
+      <p class="muted small">To compare, change <code>EMBED_MODEL</code> in <code>rag/config.py</code>, run <code>python -m rag.indexing</code> again, then <code>python -m eval.run_eval</code>. Re-indexing is required: vectors from different models aren't comparable.</p>
     </div>
   </section>
 
@@ -393,8 +395,8 @@ page: 1</pre></div>
 
     <dl class="params panel">
       <dt>HNSW index</dt><dd>A graph linking each vector to its near neighbours. A search hops through the graph toward the closest region instead of comparing against every vector.</dd>
-      <dt>hnsw:space</dt><dd>Set to <code>cosine</code> in <code>indexing.py</code>: closeness is measured by the angle between vectors, the usual choice for text.</dd>
-      <dt>chroma_db/</dt><dd>Chroma runs inside the Python script, with no separate server, and saves everything to this folder. It isn't committed to Git.</dd>
+      <dt>hnsw:space</dt><dd>Set to <code>cosine</code> in <code>rag/indexing.py</code>: closeness is measured by the angle between vectors, the usual choice for text.</dd>
+      <dt>data/chroma_db/</dt><dd>Chroma runs inside the Python script, with no separate server, and saves everything to this folder. It isn't committed to Git.</dd>
     </dl>
 
     <div class="panel">
@@ -471,7 +473,7 @@ page: 1</pre></div>
 
     <div class="panel">
       <h3>What the model receives</h3>
-      <p class="muted small">This is the prompt <code>generation.py</code> builds for my test question.</p>
+      <p class="muted small">This is the prompt <code>rag/generation.py</code> builds for my test question.</p>
       <div class="prompt">
         <div class="part sys"><span class="tag">System prompt</span>You answer questions about AI research papers.
 Use ONLY the numbered sources provided. Cite them like [1], [2].
@@ -533,8 +535,8 @@ Retrieval-Augmented Generation for Large Language Models: A Survey …
 
     <div class="panel">
       <h3>Run it yourself</h3>
-      <pre class="cmd">python eval/run_eval.py             # retrieval only: free, a few seconds
-python eval/run_eval.py --answers   # also generate and check answers</pre>
+      <pre class="cmd">python -m eval.run_eval             # retrieval only: free, a few seconds
+python -m eval.run_eval --answers   # also generate and check answers</pre>
       <p class="muted small">The experiments I plan to score against this baseline: a stronger embedding model, Contextual Retrieval (adding a short description to each chunk before embedding), and re-ranking.</p>
     </div>
   </section>
