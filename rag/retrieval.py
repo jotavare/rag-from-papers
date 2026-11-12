@@ -30,12 +30,19 @@ def _collection():
     return collection
 
 
-def retrieve(question: str, top_k: int = TOP_K) -> list[dict]:
-    """Return the top_k chunks most similar to the question."""
+def retrieve(question: str, top_k: int = TOP_K, paper: str | None = None) -> list[dict]:
+    """Return the top_k chunks most similar to the question.
+
+    paper: search only this paper's chunks (set by the planning step).
+    """
     query_embedding = _model().encode([QUERY_PREFIX + question]).tolist()
 
     collection = _collection()
-    result = collection.query(query_embeddings=query_embedding, n_results=top_k)
+    result = collection.query(
+        query_embeddings=query_embedding,
+        n_results=top_k,
+        where={"source": paper} if paper else None,
+    )
 
     return [
         {"text": doc, "source": meta["source"], "page": meta["page"], "distance": dist}

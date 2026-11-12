@@ -13,6 +13,7 @@ import json
 import os
 import shutil
 import subprocess
+import time
 import urllib.request
 from pathlib import Path
 
@@ -35,13 +36,13 @@ def build_prompt(question: str, chunks: list[dict]) -> str:
     return f"Sources:\n\n{sources}\n\nQuestion: {question}"
 
 
-def ask_ollama(prompt: str) -> str:
+def ask_ollama(prompt: str, system: str) -> str:
     body = json.dumps(
         {
             "model": OLLAMA_MODEL,
             "stream": False,
             "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "system", "content": system},
                 {"role": "user", "content": prompt},
             ],
         }
@@ -53,40 +54,47 @@ def ask_ollama(prompt: str) -> str:
         return json.loads(response.read())["message"]["content"]
 
 
-def ask_claude(prompt: str) -> str:
+def ask_claude(prompt: str, system: str) -> str:
     import anthropic  # only needed for this backend
 
     client = anthropic.Anthropic()  # reads ANTHROPIC_API_KEY from the environment
     response = client.messages.create(
         model=CLAUDE_MODEL,
         max_tokens=1024,
-        system=SYSTEM_PROMPT,
+        system=system,
         messages=[{"role": "user", "content": prompt}],
     )
     return response.content[0].text
 
 
-def ask_claude_code(prompt: str) -> str:
+def ask_claude_code(prompt: str, system: str) -> str:
     """Run Claude Code in non-interactive mode (-p) with tools disabled,
     so it only reads the prompt and answers."""
     exe = shutil.which("claude") or str(Path.home() / ".local" / "bin" / "claude.exe")
-    result = subprocess.run(
-        [exe, "-p", "--model", "sonnet", "--tools", "", "--system-prompt", SYSTEM_PROMPT],
-        input=prompt,
-        capture_output=True,
-        text=True,
-        encoding="utf-8",
-        timeout=600,
-    )
-    if result.returncode != 0:
-        raise SystemExit(f"claude failed: {result.stderr.strip() or result.stdout.strip()}")
-    return result.stdout.strip()
+    for attempt in range(3):  # many calls in a row can fail now and then; retry
+        result = subprocess.run(
+            [exe, "-p", "--model", "sonnet", "--tools", "", "--system-prompt", system],
+            input=prompt,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=600,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+        time.sleep(10 * (attempt + 1))
+    raise SystemExit(f"claude failed: {result.stderr.strip() or result.stdout.strip()}")
 
 
 BACKENDS = {"ollama": ask_ollama, "claude-code": ask_claude_code, "claude": ask_claude}
 
 
-def generate(question: str, chunks: list[dict]) -> str:
+def complete(prompt: str, system: str) -> str:
+    """Send one prompt to the chosen LLM backend. Used by generation and planning."""
     if BACKEND not in BACKENDS:
         raise SystemExit(f"Unknown LLM_BACKEND {BACKEND!r}; choose from {list(BACKENDS)}")
-    return BACKENDS[BACKEND](build_prompt(question, chunks))
+    return BACKENDS[BACKEND](prompt, system)
+
+
+def generate(question: str, chunks: list[dict]) -> str:
+    return complete(build_prompt(question, chunks), SYSTEM_PROMPT)

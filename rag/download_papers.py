@@ -9,21 +9,22 @@ import urllib.request
 
 from rag.config import PAPERS_DIR
 
-# arXiv ID -> short file name
+# arXiv ID -> (short file name, title and authors)
+# The titles are also what the planning step shows the LLM.
 PAPERS = {
-    "1706.03762": "attention-is-all-you-need",
-    "1810.04805": "bert",
-    "1908.10084": "sentence-bert",
-    "2005.11401": "rag-lewis-2020",
-    "2201.11903": "chain-of-thought",
-    "2210.03629": "react",
-    "2312.10997": "rag-survey",
+    "1706.03762": ("attention-is-all-you-need", "Attention Is All You Need (Vaswani et al., 2017)"),
+    "1810.04805": ("bert", "BERT: Pre-training of Deep Bidirectional Transformers (Devlin et al., 2018)"),
+    "1908.10084": ("sentence-bert", "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks (Reimers and Gurevych, 2019)"),
+    "2005.11401": ("rag-lewis-2020", "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks (Lewis et al., 2020)"),
+    "2201.11903": ("chain-of-thought", "Chain-of-Thought Prompting Elicits Reasoning in Large Language Models (Wei et al., 2022)"),
+    "2210.03629": ("react", "ReAct: Synergizing Reasoning and Acting in Language Models (Yao et al., 2022)"),
+    "2312.10997": ("rag-survey", "Retrieval-Augmented Generation for Large Language Models: A Survey (Gao et al., 2023)"),
 }
 
 
 def main() -> None:
     PAPERS_DIR.mkdir(parents=True, exist_ok=True)
-    for arxiv_id, name in PAPERS.items():
+    for arxiv_id, (name, _title) in PAPERS.items():
         target = PAPERS_DIR / f"{name}.pdf"
         if target.exists():
             print(f"skip  {target} (already downloaded)")

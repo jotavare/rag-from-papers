@@ -9,9 +9,13 @@ Answers (only with --answers, uses LLM_BACKEND):
   pass   the answer contains every required keyword group (any alternative
          in a group counts). Crude, but cheap and repeatable.
 
+Planning (only with --plan, uses LLM_BACKEND):
+  the LLM picks a paper and a search phrase before retrieval
+
 Run from the project root:
   python -m eval.run_eval
   python -m eval.run_eval --answers
+  python -m eval.run_eval --plan --answers
 """
 
 import argparse
@@ -31,20 +35,28 @@ def keyword_pass(answer: str, must_include: list[list[str]]) -> bool:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--answers", action="store_true", help="also generate and check answers")
+    parser.add_argument("--plan", action="store_true", help="plan each search with the LLM first")
     args = parser.parse_args()
 
-    if args.answers:
+    if args.answers or args.plan:
         from rag.generation import BACKEND, generate
+    if args.plan:
+        from rag.planning import plan_search
 
     questions = json.loads(QUESTIONS_FILE.read_text(encoding="utf-8"))
     retrieval_rows = [q for q in questions if q["source"]]
 
     hits, rr_total, answer_passes = 0, 0.0, 0
     for n, q in enumerate(questions, start=1):
-        chunks = retrieve(q["question"], TOP_K)
+        line = f"{n:>2}. "
+        if args.plan:
+            plan = plan_search(q["question"])
+            chunks = retrieve(plan["query"], TOP_K, paper=plan["paper"])
+            line += f"plan {plan['paper'] or 'all':<26} "
+        else:
+            chunks = retrieve(q["question"], TOP_K)
         sources = [c["source"] for c in chunks]
 
-        line = f"{n:>2}. "
         if q["source"]:
             rank = sources.index(q["source"]) + 1 if q["source"] in sources else None
             hits += rank is not None
@@ -66,6 +78,8 @@ def main() -> None:
     total = len(retrieval_rows)
     print()
     print(f"Retrieval  hit@{TOP_K}: {hits}/{total} ({hits / total:.0%})   MRR: {rr_total / total:.2f}")
+    if args.plan:
+        print(f"Planning   ({BACKEND}): on")
     if args.answers:
         print(f"Answers    ({BACKEND}): {answer_passes}/{len(questions)} passed keyword check")
 
